@@ -1,42 +1,25 @@
-"""Structural PII redaction for target-derived text (Week-9, decision 0017).
+"""Structural PII redaction used by the offline Week-2 normalizer.
 
-This module is the Week-9 counterpart to `infra/litellm/guardrails/egress_redaction.py` and
-`agent/trace.py`: where those strip *credentials* this host holds and *attack-shaped* target-raw
-markers, this one strips *personal data* that a (simulated) pentest dump surfaces from the target's
-mock user store — emails, credit-card PANs, session JWTs, UUIDs — before that text can reach the
-Supervisor checkpoint, the approval-audit ledger, the console, the Phoenix traces, or the RAG store.
-
-It follows the SAME discipline egress_redaction.py documents at length, for the same reason: the
-agent's legitimate workload is SQL-injection payloads, XSS strings, path traversal, stack traces,
-and file hashes — the actual work product. A redactor tuned to "anything that looks like data"
-mangles that workload, and a guardrail that quietly corrupts a finding degrades every downstream
-result invisibly. So every detector here matches a NARROW STRUCTURAL SHAPE, never "suspicious
-looking" content:
+The redactor preserves security evidence and matches narrow structural shapes:
 
 - **email** — a local-part@domain.tld shape. Attack payloads do not carry this shape.
 - **credit-card PAN** — 13–19 digits that pass the Luhn checksum AND sit under a card-ish label
   (`card_number=`, `"pan":`, …). The label anchor is load-bearing, not cosmetic: ~1 in 10 random
   16-digit numbers pass Luhn by chance, so a bare-number rule would redact a `session_id` or a file
   offset. Requiring the label means a non-card 16-digit identifier is never touched. A *bare* PAN in
-  a positional multi-row SQL result (column named once in a header row) is a deliberate, documented
-  gap — bound to the deferred real-execution work (decision 0016), not closed by broadening here.
+  a positional multi-row SQL result (column named once in a header row) is deliberately not inferred.
 - **JWT** — the `eyJ…`.`…`.`…` three-segment base64url shape (same anchor egress_redaction uses to
   avoid the length-only false positive on Java dotted identifiers).
 - **UUID** — RFC 4122 layout.
 
-Deliberately NOT redacted (documented non-goals, so a reader knows these are choices):
+Deliberately not redacted:
 - **Bare 32-char MD5 password hashes.** A standalone 32-hex string is UUID-hex territory and
-  redacting it would false-positive on legitimate hashes; the *value* is instead removed by the
-  existing credential-assignment pass (`password=<md5>` → `[redacted:secret]` in `agent/trace.py`),
-  and the "weak unsalted hashing" FINDING survives via the finding's class label + column +
-  endpoint, which never needed the literal digest (decision 0017, W9-D2a).
+  redacting it would false-positive on legitimate hashes.
 - **64-char hex file hashes / long numeric IDs without a card label.** Preserved as evidence, same
-  as egress_redaction.py.
+  as other scanner digests.
 
 The redactor records only the CLASS and a COUNT of what it removed — never the value, a substring,
-or a hash of it (a hash of short PII is brute-forceable, defeating the point — egress_redaction's
-own reasoning). Kept free of any third-party import so it is pure, testable without services, and
-has no supply-chain surface of its own.
+or a hash of it. It has no third-party dependency.
 """
 
 from __future__ import annotations

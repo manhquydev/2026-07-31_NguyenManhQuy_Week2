@@ -15,10 +15,25 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON = os.environ.get("PYTHON", sys.executable)
+PYTHON_INPUT = os.environ.get("PYTHON", sys.executable)
+PYTHON_FOUND = shutil.which(PYTHON_INPUT)
+PYTHON = str(Path(PYTHON_FOUND).resolve()) if PYTHON_FOUND else PYTHON_INPUT
 MANIFEST = ROOT / "rag" / "charter-corpus-manifest.json"
 SEARCH = ROOT / "scripts" / "search-knowledge.py"
 RUNNER = ROOT / "scripts" / "run-week2-checks.sh"
+EXPECTED_OWASP_COVERAGE = [
+    "A01:2021-Broken Access Control",
+    "A02:2021-Cryptographic Failures",
+    "A03:2021-Injection",
+    "A04:2021-Insecure Design",
+    "A05:2021-Security Misconfiguration",
+    "A06:2021-Vulnerable and Outdated Components",
+    "A07:2021-Identification and Authentication Failures",
+    "A08:2021-Software and Data Integrity Failures",
+    "A09:2021-Security Logging and Monitoring Failures",
+    "A10:2021-Server-Side Request Forgery (SSRF)",
+]
+EXPECTED_TOOL_COVERAGE = ["nuclei", "trivy", "semgrep"]
 
 
 def sha256_bytes(value: bytes) -> str:
@@ -54,24 +69,56 @@ class Week2DeliveryTest(unittest.TestCase):
         self.assertEqual(25, len(set(ids)))
         self.assertEqual(12, len(examples))
         self.assertEqual(
-            {"nuclei", "trivy", "semgrep"},
-            set(manifest["required_coverage"]["scanner_tool_docs"]),
+            EXPECTED_TOOL_COVERAGE,
+            manifest["required_coverage"]["scanner_tool_docs"],
         )
-        self.assertEqual(10, len(manifest["required_coverage"]["owasp_top_10"]))
+        self.assertEqual(EXPECTED_OWASP_COVERAGE, manifest["required_coverage"]["owasp_top_10"])
+        self.assertEqual("sentinel-charter-corpus/v1", manifest["schema_version"])
+        self.assertEqual("sentinel-charter-v1", manifest["corpus_version"])
 
         semgrep = next(record for record in documents if record["id"] == "tool-semgrep")
         self.assertEqual({"scanner_tool_docs": "semgrep"}, semgrep["coverage"])
-        for field in ("source", "source_ref", "source_license", "content_origin", "version", "content"):
-            self.assertIsInstance(semgrep[field], str)
-            self.assertTrue(semgrep[field])
+        expected_coverage_ids = {
+            **{value: f"owasp-a{index:02d}" for index, value in enumerate(EXPECTED_OWASP_COVERAGE, 1)},
+            **{value: f"tool-{value}" for value in EXPECTED_TOOL_COVERAGE},
+        }
 
         for document in documents:
+            for field in (
+                "source",
+                "source_ref",
+                "license",
+                "source_license",
+                "content_origin",
+                "version",
+                "content",
+            ):
+                self.assertIsInstance(document[field], str)
+                self.assertTrue(document[field])
+            self.assertTrue(document["source_ref"].startswith("https://"))
+            self.assertEqual("sentinel-charter-v1", document["version"])
             self.assertEqual(document["sha256"], sha256_bytes(document["content"].encode()))
+            self.assertEqual(1, len(document["coverage"]))
+            coverage_value = next(iter(document["coverage"].values()))
+            self.assertEqual(expected_coverage_ids[coverage_value], document["id"])
         for example in examples:
+            for field in (
+                "source",
+                "source_ref",
+                "license",
+                "source_license",
+                "content_origin",
+                "version",
+            ):
+                self.assertIsInstance(example[field], str)
+                self.assertTrue(example[field])
+            self.assertTrue(example["source_ref"].startswith("https://"))
+            self.assertEqual("sentinel-charter-v1", example["version"])
             relative = Path(example["path"])
             self.assertFalse(relative.is_absolute())
             self.assertNotIn("..", relative.parts)
             path = ROOT / "rag" / relative
+            self.assertTrue(path.is_file())
             self.assertFalse(path.is_symlink())
             payload = json.loads(path.read_text(encoding="utf-8"))
             self.assertEqual(example["id"], payload["id"])
@@ -246,6 +293,17 @@ class Week2DeliveryTest(unittest.TestCase):
         "avoid recursive mutation-runner tests",
     )
     def test_runner_detects_committed_artifact_and_corpus_tamper(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory).resolve() / "delivery"
+            shutil.copytree(ROOT, copied, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__"))
+            control = run(
+                "bash",
+                str(copied / "scripts/run-week2-checks.sh"),
+                cwd=copied,
+                env={"PYTHON": PYTHON, "WEEK2_SKIP_SELF_MUTATION": "1"},
+            )
+            self.assertEqual(0, control.returncode, control.stderr)
+
         source_hashes = {
             path.relative_to(ROOT): sha256_file(path)
             for path in ROOT.rglob("*")
@@ -256,9 +314,15 @@ class Week2DeliveryTest(unittest.TestCase):
             "input",
             "inline-digest",
             "example-content",
+            "schema-version",
             "coverage",
+            "coverage-spoof",
             "duplicate-id",
+            "missing-provenance",
+            "absolute",
             "traversal",
+            "missing-example",
+            "malformed-example-record",
             "example-id",
             "example-symlink",
         )
@@ -282,12 +346,27 @@ class Week2DeliveryTest(unittest.TestCase):
                         payload = json.loads(example_path.read_text(encoding="utf-8"))
                         payload["content"] += " tampered"
                         example_path.write_text(json.dumps(payload), encoding="utf-8")
+                    elif mutation == "schema-version":
+                        manifest["schema_version"] = "sentinel-charter-corpus/v999"
                     elif mutation == "coverage":
                         manifest["required_coverage"]["scanner_tool_docs"].remove("semgrep")
+                    elif mutation == "coverage-spoof":
+                        manifest["required_coverage"]["owasp_top_10"][0] = "A99:2099-Bogus"
+                        manifest["documents"][0]["id"] = "fake-a01"
+                        manifest["documents"][0]["coverage"] = {"owasp_top_10": "A99:2099-Bogus"}
                     elif mutation == "duplicate-id":
                         manifest["documents"][1]["id"] = manifest["documents"][0]["id"]
+                    elif mutation == "missing-provenance":
+                        manifest["documents"][0].pop("source_license")
+                    elif mutation == "absolute":
+                        manifest["examples"][0]["path"] = "/tmp/outside-corpus.json"
                     elif mutation == "traversal":
                         manifest["examples"][0]["path"] = "../../README.md"
+                    elif mutation == "missing-example":
+                        example_path = copied / "rag" / manifest["examples"][0]["path"]
+                        example_path.unlink()
+                    elif mutation == "malformed-example-record":
+                        manifest["examples"][0] = "invalid"
                     elif mutation == "example-id":
                         example_path = copied / "rag" / manifest["examples"][0]["path"]
                         payload = json.loads(example_path.read_text(encoding="utf-8"))
@@ -305,7 +384,8 @@ class Week2DeliveryTest(unittest.TestCase):
                     cwd=copied,
                     env={"PYTHON": PYTHON, "WEEK2_SKIP_SELF_MUTATION": "1"},
                 )
-                self.assertNotEqual(0, result.returncode)
+                self.assertEqual(1, result.returncode, result.stderr)
+                self.assertNotIn("No such file or directory: '.venv/bin/python'", result.stderr)
 
         for relative, digest in source_hashes.items():
             self.assertEqual(digest, sha256_file(ROOT / relative), str(relative))

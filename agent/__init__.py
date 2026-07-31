@@ -1,7 +1,5 @@
-"""Sentinel Recon & Analysis agent (Week 4).
+"""Offline Week-2 compatibility normalization helpers.
 
-Read-only reconnaissance: consumes the SAST/DAST lake and the threat-intel RAG, reaches the
-target only through the Kong agent-recon identity, and emits a schema-validated Attack Surface
-Map. All model access goes through the provenance-aware client so target-derived content stays
-labelled as untrusted data.
+This delivery package does not contain or claim a live Security Analysis Agent.
+Agent consumption of the normalized aggregate is intentionally deferred to Week 3.
 """
