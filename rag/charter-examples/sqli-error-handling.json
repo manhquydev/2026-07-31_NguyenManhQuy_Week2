@@ -1,0 +1,1 @@
+{"id":"sqli-error-handling","content":"SQL Injection example: a database exception is returned verbatim to the browser. Keep detailed query failures in protected diagnostics and return a generic client error so database structure is not disclosed."}

@@ -1,0 +1,1 @@
+{"id":"csrf-state-change","content":"CSRF example: a browser-authenticated state-changing form has no request-origin defence. Require an anti-CSRF control appropriate to the session model and verify it on the server for the action."}

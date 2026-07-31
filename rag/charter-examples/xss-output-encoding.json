@@ -1,0 +1,1 @@
+{"id":"xss-output-encoding","content":"Cross-Site Scripting (XSS) example: a comment is inserted into HTML text. Encode output for the HTML text context at render time; input filtering alone cannot establish that the later output context is safe."}

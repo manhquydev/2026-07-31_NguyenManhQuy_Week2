@@ -1,0 +1,1 @@
+{"id":"access-control-object-id","content":"Access-control example: an invoice endpoint accepts an object identifier. The server must verify that the authenticated principal is permitted to access that specific object before returning or changing it."}

@@ -1,0 +1,1 @@
+{"id":"xss-dom-sink","content":"DOM XSS example: client code assigns a URL fragment to an HTML-interpreting DOM sink. Treat the fragment as untrusted data and use a text-safe DOM API or a reviewed sanitizer for the exact context."}

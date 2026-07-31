@@ -1,0 +1,87 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "bkimminich/juice-shop@sha256:e68144772ebaaca0ec117b38d44903af92416793230288ef7c5437fc4f26850a",
+  "ArtifactType": "container_image",
+  "Results": [
+    {
+      "Target": "bkimminich/juice-shop@sha256:e68144772ebaaca0ec117b38d44903af92416793230288ef7c5437fc4f26850a (debian 13.5)",
+      "Class": "os-pkgs",
+      "Type": "debian",
+      "Vulnerabilities": [],
+      "Secrets": [],
+      "Misconfigurations": []
+    },
+    {
+      "Target": "Node.js",
+      "Class": "lang-pkgs",
+      "Type": "node-pkg",
+      "Vulnerabilities": [],
+      "Secrets": [],
+      "Misconfigurations": []
+    },
+    {
+      "Target": "/juice-shop/build/lib/insecurity.js",
+      "Class": "secret",
+      "Vulnerabilities": [],
+      "Secrets": [
+        {
+          "RuleID": "private-key",
+          "Category": "AsymmetricPrivateKey",
+          "Severity": "HIGH",
+          "Title": "Asymmetric Private Key",
+          "StartLine": 55,
+          "EndLine": 55
+        }
+      ],
+      "Misconfigurations": []
+    },
+    {
+      "Target": "/juice-shop/frontend/src/app/app.guard.spec.ts",
+      "Class": "secret",
+      "Vulnerabilities": [],
+      "Secrets": [
+        {
+          "RuleID": "jwt-token",
+          "Category": "JWT",
+          "Severity": "MEDIUM",
+          "Title": "JWT token",
+          "StartLine": 46,
+          "EndLine": 46
+        }
+      ],
+      "Misconfigurations": []
+    },
+    {
+      "Target": "/juice-shop/frontend/src/app/last-login-ip/last-login-ip.component.spec.ts",
+      "Class": "secret",
+      "Vulnerabilities": [],
+      "Secrets": [
+        {
+          "RuleID": "jwt-token",
+          "Category": "JWT",
+          "Severity": "MEDIUM",
+          "Title": "JWT token",
+          "StartLine": 72,
+          "EndLine": 72
+        }
+      ],
+      "Misconfigurations": []
+    },
+    {
+      "Target": "/juice-shop/lib/insecurity.ts",
+      "Class": "secret",
+      "Vulnerabilities": [],
+      "Secrets": [
+        {
+          "RuleID": "private-key",
+          "Category": "AsymmetricPrivateKey",
+          "Severity": "HIGH",
+          "Title": "Asymmetric Private Key",
+          "StartLine": 21,
+          "EndLine": 21
+        }
+      ],
+      "Misconfigurations": []
+    }
+  ]
+}

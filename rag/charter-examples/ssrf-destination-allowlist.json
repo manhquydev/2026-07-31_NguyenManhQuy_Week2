@@ -1,0 +1,1 @@
+{"id":"ssrf-destination-allowlist","content":"SSRF example: an image-preview service fetches a user-supplied URL. Resolve and validate the final destination against a strict allowlist, reject redirects, and do not expose internal network access."}

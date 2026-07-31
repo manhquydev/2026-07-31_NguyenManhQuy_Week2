@@ -1,0 +1,1 @@
+{"id":"sqli-input-allowlist","content":"SQL Injection example: an input selects a database sort column. Parameters cannot replace an identifier, so map the requested value to a small server-side allowlist before building that identifier."}

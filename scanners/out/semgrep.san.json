@@ -1,0 +1,259 @@
+{
+  "version": "1.171.0",
+  "results": [
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/challenges/challenge1/ImageServlet.java",
+      "start": {
+        "line": 21,
+        "col": 37,
+        "offset": 738
+      },
+      "end": {
+        "line": 21,
+        "col": 49,
+        "offset": 750
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/challenges/challenge7/PasswordResetLink.java",
+      "start": {
+        "line": 18,
+        "col": 21,
+        "offset": 428
+      },
+      "end": {
+        "line": 18,
+        "col": 33,
+        "offset": 440
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/cryptography/EncodingAssignment.java",
+      "start": {
+        "line": 37,
+        "col": 37,
+        "offset": 1547
+      },
+      "end": {
+        "line": 37,
+        "col": 49,
+        "offset": 1559
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/cryptography/HashingAssignment.java",
+      "start": {
+        "line": 37,
+        "col": 31,
+        "offset": 1638
+      },
+      "end": {
+        "line": 37,
+        "col": 43,
+        "offset": 1650
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-weak-message-digest",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/cryptography/HashingAssignment.java",
+      "start": {
+        "line": 39,
+        "col": 26,
+        "offset": 1703
+      },
+      "end": {
+        "line": 39,
+        "col": 58,
+        "offset": 1735
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-327: Use of a Broken or Risky Cryptographic Algorithm",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/cryptography/HashingAssignment.java",
+      "start": {
+        "line": 55,
+        "col": 31,
+        "offset": 2358
+      },
+      "end": {
+        "line": 55,
+        "col": 43,
+        "offset": 2370
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/csrf/CSRFGetFlag.java",
+      "start": {
+        "line": 39,
+        "col": 25,
+        "offset": 1373
+      },
+      "end": {
+        "line": 39,
+        "col": 37,
+        "offset": 1385
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/csrf/CSRFGetFlag.java",
+      "start": {
+        "line": 45,
+        "col": 25,
+        "offset": 1711
+      },
+      "end": {
+        "line": 45,
+        "col": 37,
+        "offset": 1723
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/csrf/CSRFGetFlag.java",
+      "start": {
+        "line": 56,
+        "col": 23,
+        "offset": 2253
+      },
+      "end": {
+        "line": 56,
+        "col": 35,
+        "offset": 2265
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/hijacksession/cas/HijackSessionAuthenticationProvider.java",
+      "start": {
+        "line": 29,
+        "col": 28,
+        "offset": 845
+      },
+      "end": {
+        "line": 29,
+        "col": 40,
+        "offset": 857
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    },
+    {
+      "check_id": "scanners.rulesets.java-insecure-random",
+      "path": "/home/manhquy/Downloads/vinsoc/benchmark/targets/webgoat-src/src/main/java/org/owasp/webgoat/lessons/jwt/JWTSecretKeyEndpoint.java",
+      "start": {
+        "line": 38,
+        "col": 39,
+        "offset": 1512
+      },
+      "end": {
+        "line": 38,
+        "col": 51,
+        "offset": 1524
+      },
+      "extra": {
+        "message": "[REDACTED — see check_id]",
+        "lines": "[REDACTED]",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-330: Use of Insufficiently Random Values",
+          "owasp": "A02:2021 - Cryptographic Failures"
+        }
+      }
+    }
+  ],
+  "errors": []
+}

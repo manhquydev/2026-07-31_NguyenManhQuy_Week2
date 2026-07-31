@@ -1,0 +1,1 @@
+{"id":"sqli-parameterized-query","content":"SQL Injection example: a login handler concatenates a username into a SQL statement. Keep the query structure fixed and bind the username as a parameter; review the call site for string-built SQL."}

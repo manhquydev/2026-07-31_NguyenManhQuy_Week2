@@ -1,0 +1,71 @@
+{
+  "schema_version": "week1-submission/v1",
+  "source_kind": "week1-submission",
+  "aggregate_count": 36,
+  "inputs": [
+    {
+      "tool": "nuclei",
+      "filename": "scanners/out/nuclei.san.jsonl",
+      "sha256": "749fcb54f2e963f1ac7cc276f368b82600e9913e09b8d81c79fb4efe59fdb336",
+      "source_kind": "week1-submission",
+      "input_count": 21,
+      "admitted_count": 21,
+      "refused_count": 0,
+      "counts": {
+        "input": 21,
+        "admitted": 21,
+        "refused": 0
+      }
+    },
+    {
+      "tool": "trivy",
+      "filename": "scanners/out/trivy.san.json",
+      "sha256": "aced484ea5868a9ac0386873b5b1076ed0f7a8b48a32b909def6fbbe6a8623ba",
+      "source_kind": "week1-submission",
+      "input_count": 4,
+      "admitted_count": 4,
+      "refused_count": 0,
+      "counts": {
+        "input": 4,
+        "admitted": 4,
+        "refused": 0
+      }
+    },
+    {
+      "tool": "semgrep",
+      "filename": "scanners/out/semgrep.san.json",
+      "sha256": "4330b7b387e8ff2b92ab9fa78acc71ac4c6f5be0a104891d288d6cf29b45f923",
+      "source_kind": "week1-submission",
+      "input_count": 11,
+      "admitted_count": 11,
+      "refused_count": 0,
+      "counts": {
+        "input": 11,
+        "admitted": 11,
+        "refused": 0
+      }
+    }
+  ],
+  "counts": {
+    "input": 36,
+    "admitted": 36,
+    "refused": 0,
+    "per_tool": {
+      "nuclei": {
+        "input": 21,
+        "admitted": 21,
+        "refused": 0
+      },
+      "trivy": {
+        "input": 4,
+        "admitted": 4,
+        "refused": 0
+      },
+      "semgrep": {
+        "input": 11,
+        "admitted": 11,
+        "refused": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"id":"sqli-orm-raw-query","content":"SQL Injection example: an ORM application uses a raw-query escape hatch with concatenated input. The ORM does not make that raw SQL safe; use its bound-parameter form or a reviewed fixed query."}

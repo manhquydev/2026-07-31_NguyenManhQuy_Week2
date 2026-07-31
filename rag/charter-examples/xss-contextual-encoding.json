@@ -1,0 +1,1 @@
+{"id":"xss-contextual-encoding","content":"XSS example: a value safe for HTML text is reused inside a JavaScript string. Output encoding must match the final HTML, attribute, URL, CSS, or JavaScript context; one generic encoder is not sufficient."}

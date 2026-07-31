@@ -1,0 +1,1 @@
+{"id":"xss-rich-text-sanitization","content":"XSS example: a rich-text feature accepts limited HTML. Define the allowed elements and attributes, sanitize with a maintained library, and encode any remaining plain-text fields at their rendering context."}
