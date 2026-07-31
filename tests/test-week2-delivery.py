@@ -1,0 +1,315 @@
+#!/usr/bin/env python3
+"""Self-contained Week-2 delivery acceptance and hardening tests."""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PYTHON = os.environ.get("PYTHON", sys.executable)
+MANIFEST = ROOT / "rag" / "charter-corpus-manifest.json"
+SEARCH = ROOT / "scripts" / "search-knowledge.py"
+RUNNER = ROOT / "scripts" / "run-week2-checks.sh"
+
+
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def sha256_file(path: Path) -> str:
+    return sha256_bytes(path.read_bytes())
+
+
+def run(*args: str, cwd: Path = ROOT, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    merged = os.environ.copy()
+    merged["PYTHONPATH"] = str(cwd)
+    if env:
+        merged.update(env)
+    return subprocess.run(args, cwd=cwd, env=merged, text=True, capture_output=True)
+
+
+def search(query: str, k: int) -> subprocess.CompletedProcess[str]:
+    return run(PYTHON, str(SEARCH), query, "-k", str(k))
+
+
+class Week2DeliveryTest(unittest.TestCase):
+    maxDiff = None
+
+    def test_corpus_contract(self) -> None:
+        manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+        documents = manifest["documents"]
+        examples = manifest["examples"]
+        all_records = [*documents, *examples]
+        ids = [record["id"] for record in all_records]
+        self.assertEqual(25, len(all_records))
+        self.assertEqual(25, len(set(ids)))
+        self.assertEqual(12, len(examples))
+        self.assertEqual(
+            {"nuclei", "trivy", "semgrep"},
+            set(manifest["required_coverage"]["scanner_tool_docs"]),
+        )
+        self.assertEqual(10, len(manifest["required_coverage"]["owasp_top_10"]))
+
+        semgrep = next(record for record in documents if record["id"] == "tool-semgrep")
+        self.assertEqual({"scanner_tool_docs": "semgrep"}, semgrep["coverage"])
+        for field in ("source", "source_ref", "source_license", "content_origin", "version", "content"):
+            self.assertIsInstance(semgrep[field], str)
+            self.assertTrue(semgrep[field])
+
+        for document in documents:
+            self.assertEqual(document["sha256"], sha256_bytes(document["content"].encode()))
+        for example in examples:
+            relative = Path(example["path"])
+            self.assertFalse(relative.is_absolute())
+            self.assertNotIn("..", relative.parts)
+            path = ROOT / "rag" / relative
+            self.assertFalse(path.is_symlink())
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(example["id"], payload["id"])
+            self.assertEqual(example["sha256"], sha256_bytes(payload["content"].encode()))
+
+    def test_search_oracles_content_digest_and_determinism(self) -> None:
+        cases = {
+            ("SQL Injection", 3): [
+                "owasp-a03",
+                "sqli-error-handling",
+                "sqli-input-allowlist",
+            ],
+            ("XSS", 3): [
+                "xss-contextual-encoding",
+                "xss-dom-sink",
+                "xss-output-encoding",
+            ],
+            ("Server-Side Request Forgery", 1): ["owasp-a10"],
+        }
+        for (query, k), expected_ids in cases.items():
+            with self.subTest(query=query):
+                first = search(query, k)
+                second = search(query, k)
+                self.assertEqual(0, first.returncode, first.stderr)
+                self.assertEqual(first.stdout, second.stdout)
+                payload = json.loads(first.stdout)
+                self.assertEqual(expected_ids, [row["id"] for row in payload["results"]])
+                for row in payload["results"]:
+                    self.assertEqual(row["sha256"], sha256_bytes(row["content"].encode()))
+                    self.assertFalse(row["content"].lstrip().startswith("{"))
+
+    def test_unrelated_query_contract(self) -> None:
+        result = search("quantum teleportation", 3)
+        self.assertEqual(1, result.returncode)
+        self.assertEqual("", result.stdout)
+        self.assertEqual("no relevant knowledge found\n", result.stderr)
+
+    def test_aggregate_contract_and_reproducibility(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "aggregate.jsonl"
+            generated_manifest = Path(directory) / "aggregate.manifest.json"
+            result = run(
+                PYTHON,
+                "-m",
+                "agent.normalize_week1_artifacts",
+                "--submission-dir",
+                str(ROOT),
+                "--output",
+                str(output),
+                "--manifest-output",
+                str(generated_manifest),
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual((ROOT / "artifacts/week1.aggregate.jsonl").read_bytes(), output.read_bytes())
+            self.assertEqual(
+                (ROOT / "artifacts/week1.aggregate.manifest.json").read_bytes(),
+                generated_manifest.read_bytes(),
+            )
+            self.assertEqual(0o600, stat.S_IMODE(output.stat().st_mode))
+            self.assertEqual(0o600, stat.S_IMODE(generated_manifest.stat().st_mode))
+
+            records = [json.loads(line) for line in output.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(36, len(records))
+            self.assertEqual(36, len({row["finding_id"] for row in records}))
+            source_ids = [source for row in records for source in row["source_ids"]]
+            self.assertEqual(36, len(source_ids))
+            self.assertEqual(36, len(set(source_ids)))
+            self.assertEqual(
+                {"nuclei": 21, "trivy": 4, "semgrep": 11},
+                {
+                    tool: sum(row["tool"] == tool for row in records)
+                    for tool in ("nuclei", "trivy", "semgrep")
+                },
+            )
+            self.assertTrue(all(row["schema_version"] == "week1-submission/v1" for row in records))
+            self.assertTrue(all(row["provenance_kind"] == "week1-submission" for row in records))
+
+            aggregate_manifest = json.loads(generated_manifest.read_text(encoding="utf-8"))
+            for item in aggregate_manifest["inputs"]:
+                self.assertEqual(item["sha256"], sha256_file(ROOT / item["filename"]))
+
+    def test_output_existing_is_not_replaced(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "aggregate.jsonl"
+            manifest = Path(directory) / "aggregate.manifest.json"
+            output.write_text("KEEP\n", encoding="utf-8")
+            result = run(
+                PYTHON,
+                "-m",
+                "agent.normalize_week1_artifacts",
+                "--submission-dir",
+                str(ROOT),
+                "--output",
+                str(output),
+                "--manifest-output",
+                str(manifest),
+            )
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual("KEEP\n", output.read_text(encoding="utf-8"))
+            self.assertFalse(manifest.exists())
+
+    def test_malformed_symlink_and_fifo_inputs_publish_nothing(self) -> None:
+        for mode in ("malformed", "symlink", "fifo"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as directory:
+                copied = Path(directory) / "delivery"
+                shutil.copytree(ROOT, copied, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__"))
+                nuclei = copied / "scanners/out/nuclei.san.jsonl"
+                if mode == "malformed":
+                    nuclei.write_text("{not-json}\n", encoding="utf-8")
+                else:
+                    target = copied / "nuclei-target.jsonl"
+                    target.write_bytes(nuclei.read_bytes())
+                    nuclei.unlink()
+                    if mode == "symlink":
+                        nuclei.symlink_to(target)
+                    else:
+                        os.mkfifo(nuclei)
+                output = copied / "tmp.aggregate.jsonl"
+                generated_manifest = copied / "tmp.manifest.json"
+                result = run(
+                    PYTHON,
+                    "-m",
+                    "agent.normalize_week1_artifacts",
+                    "--submission-dir",
+                    str(copied),
+                    "--output",
+                    str(output),
+                    "--manifest-output",
+                    str(generated_manifest),
+                    cwd=copied,
+                )
+                self.assertNotEqual(0, result.returncode)
+                self.assertFalse(output.exists())
+                self.assertFalse(generated_manifest.exists())
+
+    def test_free_text_locator_is_redacted_and_unsafe_file_location_is_opaque(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "delivery"
+            shutil.copytree(ROOT, copied, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__"))
+            semgrep_path = copied / "scanners/out/semgrep.san.json"
+            semgrep = json.loads(semgrep_path.read_text(encoding="utf-8"))
+            semgrep["results"][0]["check_id"] = (
+                "safe-rule https://example.invalid/rule?token=secret"
+            )
+            semgrep["results"][0]["path"] = "localhost/scan"
+            semgrep_path.write_text(json.dumps(semgrep), encoding="utf-8")
+            output = copied / "tmp.aggregate.jsonl"
+            generated_manifest = copied / "tmp.manifest.json"
+            result = run(
+                PYTHON,
+                "-m",
+                "agent.normalize_week1_artifacts",
+                "--submission-dir",
+                str(copied),
+                "--output",
+                str(output),
+                "--manifest-output",
+                str(generated_manifest),
+                cwd=copied,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            text = output.read_text(encoding="utf-8")
+            self.assertNotIn("example.invalid", text)
+            self.assertNotIn("token=secret", text)
+            self.assertIn("[redacted:locator]", text)
+            rows = [json.loads(line) for line in text.splitlines()]
+            self.assertTrue(any(row["tool"] == "semgrep" and row["location"].startswith("semgrep:")
+                                for row in rows))
+
+    @unittest.skipIf(
+        os.environ.get("WEEK2_SKIP_SELF_MUTATION") == "1",
+        "avoid recursive mutation-runner tests",
+    )
+    def test_runner_detects_committed_artifact_and_corpus_tamper(self) -> None:
+        source_hashes = {
+            path.relative_to(ROOT): sha256_file(path)
+            for path in ROOT.rglob("*")
+            if path.is_file() and ".git" not in path.parts and ".venv" not in path.parts
+        }
+        mutations = (
+            "aggregate",
+            "input",
+            "inline-digest",
+            "example-content",
+            "coverage",
+            "duplicate-id",
+            "traversal",
+            "example-id",
+            "example-symlink",
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                copied = Path(directory).resolve() / "delivery"
+                shutil.copytree(ROOT, copied, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__"))
+                self.assertTrue(copied.is_relative_to(Path(directory).resolve()))
+                manifest_path = copied / "rag/charter-corpus-manifest.json"
+                if mutation == "aggregate":
+                    (copied / "artifacts/week1.aggregate.jsonl").write_bytes(b"{}\n")
+                elif mutation == "input":
+                    with (copied / "scanners/out/nuclei.san.jsonl").open("ab") as handle:
+                        handle.write(b"\n")
+                else:
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    if mutation == "inline-digest":
+                        manifest["documents"][0]["content"] += " tampered"
+                    elif mutation == "example-content":
+                        example_path = copied / "rag" / manifest["examples"][0]["path"]
+                        payload = json.loads(example_path.read_text(encoding="utf-8"))
+                        payload["content"] += " tampered"
+                        example_path.write_text(json.dumps(payload), encoding="utf-8")
+                    elif mutation == "coverage":
+                        manifest["required_coverage"]["scanner_tool_docs"].remove("semgrep")
+                    elif mutation == "duplicate-id":
+                        manifest["documents"][1]["id"] = manifest["documents"][0]["id"]
+                    elif mutation == "traversal":
+                        manifest["examples"][0]["path"] = "../../README.md"
+                    elif mutation == "example-id":
+                        example_path = copied / "rag" / manifest["examples"][0]["path"]
+                        payload = json.loads(example_path.read_text(encoding="utf-8"))
+                        payload["id"] = "different-id"
+                        example_path.write_text(json.dumps(payload), encoding="utf-8")
+                    elif mutation == "example-symlink":
+                        example_path = copied / "rag" / manifest["examples"][0]["path"]
+                        target = copied / "rag" / manifest["examples"][1]["path"]
+                        example_path.unlink()
+                        example_path.symlink_to(target)
+                    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                result = run(
+                    "bash",
+                    str(copied / "scripts/run-week2-checks.sh"),
+                    cwd=copied,
+                    env={"PYTHON": PYTHON, "WEEK2_SKIP_SELF_MUTATION": "1"},
+                )
+                self.assertNotEqual(0, result.returncode)
+
+        for relative, digest in source_hashes.items():
+            self.assertEqual(digest, sha256_file(ROOT / relative), str(relative))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

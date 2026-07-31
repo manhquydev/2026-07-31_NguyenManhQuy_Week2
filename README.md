@@ -11,11 +11,13 @@ offline trong kho tri thức OWASP/tool với các ví dụ SQL Injection và XS
   SHA-256 và manifest số lượng/digest.
 - Không nới lỏng normalizer Charter/CI của dự án lớn: đây là adapter tương
   thích chỉ cho artifact đã nộp của Tuần 1.
-- Kho tri thức gồm OWASP Top 10, tài liệu Nuclei/Trivy và 12 ví dụ web.
+- Kho tri thức gồm OWASP Top 10, tài liệu Nuclei/Trivy/Semgrep và 12 ví dụ web.
 - Tìm `SQL Injection` và `XSS` trả nội dung, nguồn và SHA-256 liên quan.
 
-Adapter từ chối symlink/FIFO, input không hợp lệ, URL/host/đường dẫn tuyệt đối
-trong trường tự do, và không ghi đè output đã tồn tại.
+Adapter từ chối symlink/FIFO và input không hợp lệ; URL/host/đường dẫn tuyệt
+đối trong trường tự do được redact khỏi output, còn locator có cấu trúc không
+an toàn bị từ chối hoặc đổi thành định danh opaque. Adapter không ghi đè output
+đã tồn tại.
 
 ## Chạy lại
 
@@ -23,7 +25,7 @@ Yêu cầu: Python 3.11+.
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install --require-hashes -r requirements.lock
 PYTHON=.venv/bin/python bash scripts/run-week2-checks.sh
 ```
 
@@ -46,7 +48,11 @@ Tìm thủ công:
   chung Tuần 2.
 - `scanners/out/`: chỉ các artifact đã sanitize/baseline từ Tuần 1.
 - `rag/`: manifest OWASP/tool và 12 ví dụ.
-- `scripts/run-week2-checks.sh`: kiểm chứng một lệnh.
+- `requirements.lock`: dependency closure có SHA-256, dùng với
+  `pip --require-hashes`.
+- `tests/test-week2-delivery.py`: kiểm aggregate, provenance, corpus/search,
+  mutation và các biên an toàn.
+- `scripts/run-week2-checks.sh`: chạy toàn bộ kiểm chứng bằng một lệnh.
 
 Không chứa secrets, raw scan report, cấu hình LLM hay claim về chạy live
 RAG/LLM. Đây là bằng chứng phạm vi Tuần 2, không phải báo cáo hoàn tất toàn
