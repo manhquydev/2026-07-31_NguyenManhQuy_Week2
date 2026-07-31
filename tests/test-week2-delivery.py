@@ -17,7 +17,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_INPUT = os.environ.get("PYTHON", sys.executable)
 PYTHON_FOUND = shutil.which(PYTHON_INPUT)
-PYTHON = str(Path(PYTHON_FOUND).resolve()) if PYTHON_FOUND else PYTHON_INPUT
+# Keep a virtualenv executable adjacent to its ``pyvenv.cfg``.  ``resolve()``
+# dereferences `.venv/bin/python` to the base interpreter and silently escapes
+# the hash-locked environment; ``abspath()`` makes relative/PATH results stable
+# without following that symlink.
+PYTHON = os.path.abspath(PYTHON_FOUND) if PYTHON_FOUND else PYTHON_INPUT
 MANIFEST = ROOT / "rag" / "charter-corpus-manifest.json"
 SEARCH = ROOT / "scripts" / "search-knowledge.py"
 RUNNER = ROOT / "scripts" / "run-week2-checks.sh"
@@ -56,8 +60,26 @@ def search(query: str, k: int) -> subprocess.CompletedProcess[str]:
     return run(PYTHON, str(SEARCH), query, "-k", str(k))
 
 
+def virtualenv_root(executable: str) -> Path | None:
+    executable_path = Path(executable)
+    if not executable_path.is_absolute():
+        return None
+    for parent in executable_path.parents:
+        if (parent / "pyvenv.cfg").is_file():
+            return parent
+    return None
+
+
 class Week2DeliveryTest(unittest.TestCase):
     maxDiff = None
+
+    def test_selected_virtualenv_interpreter_remains_in_its_virtualenv(self) -> None:
+        expected_root = virtualenv_root(PYTHON)
+        if expected_root is None:
+            self.skipTest("the selected interpreter is not a virtualenv executable")
+        result = run(PYTHON, "-c", "import sys; print(sys.prefix)")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(expected_root.resolve(), Path(result.stdout.strip()).resolve())
 
     def test_corpus_contract(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
