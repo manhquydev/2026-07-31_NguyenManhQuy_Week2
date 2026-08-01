@@ -9,6 +9,7 @@ import re
 import stat
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,6 +45,27 @@ def _digest(content: str) -> str:
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
+def _is_https_source_ref(value: str) -> bool:
+    if any(
+        character.isspace()
+        or ord(character) < 0x20
+        or 0x7F <= ord(character) <= 0x9F
+        for character in value
+    ):
+        return False
+    try:
+        parsed = urlsplit(value)
+        parsed.port
+        return (
+            parsed.scheme == "https"
+            and parsed.hostname is not None
+            and parsed.username is None
+            and parsed.password is None
+        )
+    except ValueError:
+        return False
+
+
 def _checked_record(record: dict[str, Any], *, title: str | None = None) -> dict[str, str]:
     if not isinstance(record, dict):
         raise ValueError("corpus record is invalid")
@@ -59,7 +81,7 @@ def _checked_record(record: dict[str, Any], *, title: str | None = None) -> dict
     )
     if any(not isinstance(record.get(field), str) or not record[field] for field in required):
         raise ValueError("corpus record metadata is invalid")
-    if not record["source_ref"].startswith("https://"):
+    if not _is_https_source_ref(record["source_ref"]):
         raise ValueError(f"corpus source_ref is invalid: {record['id']}")
     if record["version"] != CORPUS_VERSION:
         raise ValueError(f"corpus version is invalid: {record['id']}")

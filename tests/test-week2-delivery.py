@@ -48,6 +48,20 @@ def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
 
 
+def delivery_source_hashes(root: Path) -> dict[Path, str]:
+    return {
+        path.relative_to(root): sha256_file(path)
+        for path in root.rglob("*")
+        if (
+            path.is_file()
+            and ".git" not in path.parts
+            and ".venv" not in path.parts
+            and "__pycache__" not in path.parts
+            and path.suffix != ".pyc"
+        )
+    }
+
+
 def run(*args: str, cwd: Path = ROOT, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     merged = os.environ.copy()
     merged["PYTHONPATH"] = str(cwd)
@@ -56,8 +70,12 @@ def run(*args: str, cwd: Path = ROOT, env: dict[str, str] | None = None) -> subp
     return subprocess.run(args, cwd=cwd, env=merged, text=True, capture_output=True)
 
 
+def search_at(root: Path, query: str, k: int) -> subprocess.CompletedProcess[str]:
+    return run(PYTHON, str(root / "scripts/search-knowledge.py"), query, "-k", str(k), cwd=root)
+
+
 def search(query: str, k: int) -> subprocess.CompletedProcess[str]:
-    return run(PYTHON, str(SEARCH), query, "-k", str(k))
+    return search_at(ROOT, query, k)
 
 
 def virtualenv_root(executable: str) -> Path | None:
@@ -177,6 +195,30 @@ class Week2DeliveryTest(unittest.TestCase):
         self.assertEqual(1, result.returncode)
         self.assertEqual("", result.stdout)
         self.assertEqual("no relevant knowledge found\n", result.stderr)
+
+    def test_search_rejects_invalid_source_ref_without_output(self) -> None:
+        invalid_refs = (
+            "https:///path",
+            "https://user:pass@host/path",
+            " https://host/path",
+            "https://host\n/path",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            copied = Path(directory) / "delivery"
+            shutil.copytree(ROOT, copied, ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__"))
+            manifest_path = copied / "rag/charter-corpus-manifest.json"
+            for source_ref in invalid_refs:
+                with self.subTest(source_ref=source_ref):
+                    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                    manifest["documents"][0]["source_ref"] = source_ref
+                    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+                    result = search_at(copied, "XSS", 1)
+                    self.assertEqual(1, result.returncode)
+                    self.assertEqual("", result.stdout)
+                    self.assertEqual(
+                        "corpus validation failed: corpus source_ref is invalid: owasp-a01\n",
+                        result.stderr,
+                    )
 
     def test_aggregate_contract_and_reproducibility(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -326,11 +368,7 @@ class Week2DeliveryTest(unittest.TestCase):
             )
             self.assertEqual(0, control.returncode, control.stderr)
 
-        source_hashes = {
-            path.relative_to(ROOT): sha256_file(path)
-            for path in ROOT.rglob("*")
-            if path.is_file() and ".git" not in path.parts and ".venv" not in path.parts
-        }
+        source_hashes = delivery_source_hashes(ROOT)
         mutations = (
             "aggregate",
             "input",
@@ -341,6 +379,10 @@ class Week2DeliveryTest(unittest.TestCase):
             "coverage-spoof",
             "duplicate-id",
             "missing-provenance",
+            "source-ref-no-host",
+            "source-ref-userinfo",
+            "source-ref-leading-whitespace",
+            "source-ref-newline",
             "absolute",
             "traversal",
             "missing-example",
@@ -380,6 +422,14 @@ class Week2DeliveryTest(unittest.TestCase):
                         manifest["documents"][1]["id"] = manifest["documents"][0]["id"]
                     elif mutation == "missing-provenance":
                         manifest["documents"][0].pop("source_license")
+                    elif mutation == "source-ref-no-host":
+                        manifest["documents"][0]["source_ref"] = "https:///path"
+                    elif mutation == "source-ref-userinfo":
+                        manifest["documents"][0]["source_ref"] = "https://user:pass@host/path"
+                    elif mutation == "source-ref-leading-whitespace":
+                        manifest["documents"][0]["source_ref"] = " https://host/path"
+                    elif mutation == "source-ref-newline":
+                        manifest["documents"][0]["source_ref"] = "https://host\n/path"
                     elif mutation == "absolute":
                         manifest["examples"][0]["path"] = "/tmp/outside-corpus.json"
                     elif mutation == "traversal":

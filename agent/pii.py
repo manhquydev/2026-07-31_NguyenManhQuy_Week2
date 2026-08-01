@@ -44,8 +44,9 @@ def _placeholder(cls: str) -> str:
 # Applied in the order below. There is no cross-detector collision (a JWT's base64url body has no
 # `@`, an email has no three-dot JWT shape, a UUID is hex-with-hyphens, a card is label-anchored
 # digits) so the order is for readability, not correctness — but PII as a whole must run LAST
-# relative to the secret/target-raw passes in agent/trace.py (see that module) so an already-placed
-# `[redacted:pii:*]` token is never re-matched by the greedy credential-assignment rule.
+# relative to any secret/target-raw passes that invoke this module so an
+# already-placed `[redacted:pii:*]` token is never re-matched by the greedy
+# credential-assignment rule.
 
 _EMAIL = re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")
 
@@ -173,6 +174,6 @@ def redact(text: str | None) -> tuple[str | None, list[PiiFinding]]:
 
 
 def scrub(text: str | None) -> str | None:
-    """Text-only convenience for composition into agent/trace.py's scalar scrub (findings dropped).
+    """Text-only convenience for callers that need scalar redaction (findings dropped).
     See `redact` for the audited form used at the capture boundary."""
     return redact(text)[0]
